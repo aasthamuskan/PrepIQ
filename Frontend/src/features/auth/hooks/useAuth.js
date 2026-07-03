@@ -16,7 +16,8 @@ export const useAuth = () => {
             const data = await login({ email, password })
             setUser(data.user)
         } catch (err) {
-
+            console.error("Login failed:", err.message)
+            throw err
         } finally {
             setLoading(false)
         }
@@ -28,7 +29,8 @@ export const useAuth = () => {
             const data = await register({ username, email, password })
             setUser(data.user)
         } catch (err) {
-
+            console.error("Register failed:", err.message)
+            throw err
         } finally {
             setLoading(false)
         }
@@ -37,10 +39,11 @@ export const useAuth = () => {
     const handleLogout = async () => {
         setLoading(true)
         try {
-            const data = await logout()
+            await logout()
             setUser(null)
         } catch (err) {
-
+            console.error("Logout failed:", err.message)
+            setUser(null) // force logout on client side even if API fails
         } finally {
             setLoading(false)
         }
@@ -50,10 +53,12 @@ export const useAuth = () => {
 
         const getAndSetUser = async () => {
             try {
-
                 const data = await getMe()
-                setUser(data.user)
-            } catch (err) { } finally {
+                setUser(data?.user ?? null)
+            } catch (err) {
+                // user not logged in, silently ignore
+                setUser(null)
+            } finally {
                 setLoading(false)
             }
         }

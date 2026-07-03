@@ -1,5 +1,6 @@
 import React,{useState} from 'react'
 import { useNavigate, Link } from 'react-router'
+import "../auth.form.scss"
 import { useAuth } from '../hooks/useAuth'
 
 const Register = () => {
@@ -9,16 +10,18 @@ const Register = () => {
     const [ email, setEmail ] = useState("")
     const [ password, setPassword ] = useState("")
 
-    const {loading,handleRegister} = useAuth()
+    const { handleRegister } = useAuth()
+    const [error, setError] = useState("")
     
     const handleSubmit = async (e) => {
         e.preventDefault()
-        await handleRegister({username,email,password})
-        navigate("/")
-    }
-
-    if(loading){
-        return (<main><h1>Loading.......</h1></main>)
+        setError("")
+        try {
+            await handleRegister({username, email, password})
+            navigate("/")
+        } catch (err) {
+            setError(err?.response?.data?.message || "Registration failed. Please try again.")
+        }
     }
 
     return (
@@ -46,6 +49,7 @@ const Register = () => {
                             onChange={(e) => { setPassword(e.target.value) }}
                             type="password" id="password" name='password' placeholder='Enter password' />
                     </div>
+                    {error && <p className="error-message">{error}</p>}
 
                     <button className='button primary-button' >Register</button>
 
