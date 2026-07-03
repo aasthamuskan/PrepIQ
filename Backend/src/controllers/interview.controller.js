@@ -1,5 +1,5 @@
 const pdfParse = require("pdf-parse/lib/pdf-parse.js")
-const { generateInterviewReport, generateResumePdf } = require("../services/ai.service")
+const { generateInterviewReport, generateResumePdf, handlePlanChat } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
 
@@ -128,4 +128,70 @@ async function generateResumePdfController(req, res) {
     }
 }
 
-module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController }
+/**
+ * @description Controller to chat with AI coach about the interview plan, optionally modifying it.
+ */
+async function chatInterviewController(req, res) {
+    const { interviewId, message, chatHistory } = req.body
+
+    if (!interviewId || !message) {
+        return res.status(400).json({ message: "Interview ID and message are required." })
+    }
+
+    try {
+        const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: req.user.id })
+        if (!interviewReport) {
+            return res.status(404).json({ message: "Interview report not found." })
+        }
+
+        const { resume, selfDescription, jobDescription } = interviewReport
+
+        // Construct current plan details to give the model
+        const currentPlan = {
+            matchScore: interviewReport.matchScore,
+            technicalQuestions: interviewReport.technicalQuestions,
+            behavioralQuestions: interviewReport.behavioralQuestions,
+            skillGaps: interviewReport.skillGaps,
+            preparationPlan: interviewReport.preparationPlan
+        }
+
+        const result = await handlePlanChat({
+            resume,
+            selfDescription,
+            jobDescription,
+            currentPlan,
+            message,
+            chatHistory
+        })
+
+        // If there is an updated plan, apply updates to MongoDB and save
+        if (result.updatedPlan) {
+            const up = result.updatedPlan
+            if (up.matchScore !== undefined) interviewReport.matchScore = up.matchScore
+            if (up.technicalQuestions !== undefined) interviewReport.technicalQuestions = up.technicalQuestions
+            if (up.behavioralQuestions !== undefined) interviewReport.behavioralQuestions = up.behavioralQuestions
+            if (up.skillGaps !== undefined) interviewReport.skillGaps = up.skillGaps
+            if (up.preparationPlan !== undefined) interviewReport.preparationPlan = up.preparationPlan
+
+            await interviewReport.save()
+        }
+
+        return res.status(200).json({
+            message: "Chat processed successfully",
+            response: result.response,
+            updatedReport: result.updatedPlan ? interviewReport : null
+        })
+
+    } catch (err) {
+        console.error("chatInterviewController error:", err)
+        return res.status(500).json({ message: err.message || "Failed to process chat message." })
+    }
+}
+
+module.exports = { 
+    generateInterViewReportController, 
+    getInterviewReportByIdController, 
+    getAllInterviewReportsController, 
+    generateResumePdfController,
+    chatInterviewController
+}

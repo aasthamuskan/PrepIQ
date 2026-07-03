@@ -1,4 +1,4 @@
-import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf } from "../services/interview.api"
+import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf, chatWithCoach } from "../services/interview.api"
 import { useContext } from "react"
 import { InterviewContext } from "../interview.context"
 
@@ -93,6 +93,22 @@ export const useInterview = () => {
         }
     }
 
-    return { loading, error, report, reports, generateReport, getReportById, getReports, getResumePdf }
+    const chatWithAI = async ({ interviewId, message, chatHistory }) => {
+        try {
+            setError(null)
+            const response = await chatWithCoach({ interviewId, message, chatHistory })
+            if (response.updatedReport) {
+                setReport(response.updatedReport)
+            }
+            return response
+        } catch (err) {
+            const msg = err?.response?.data?.message || err.message || "Failed to send message."
+            console.error("chatWithAI error:", err)
+            setError(msg)
+            throw err
+        }
+    }
+
+    return { loading, error, report, reports, generateReport, getReportById, getReports, getResumePdf, chatWithAI }
 
 }

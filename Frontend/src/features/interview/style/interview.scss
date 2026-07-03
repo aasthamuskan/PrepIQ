@@ -477,3 +477,275 @@ $severity-low: #3fb950;
         border-color: rgba($severity-low, 0.25);
     }
 }
+
+// ── Chatbot Widget ──
+.chat-widget {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    font-family: $font-stack;
+}
+
+.chat-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.2rem;
+    background: linear-gradient(135deg, $accent 0%, darken($accent, 15%) 100%);
+    border: none;
+    border-radius: 2rem;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba($accent, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba($accent, 0.5);
+    }
+
+    &__pulse {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        background: rgba(#fff, 0.15);
+        border-radius: 2rem;
+        opacity: 0;
+        animation: pulse 2s infinite;
+    }
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0; }
+    100% { transform: scale(0.95); opacity: 0; }
+}
+
+.chat-window {
+    width: 370px;
+    height: 520px;
+    background-color: $bg-card;
+    border: 1px solid $border-color;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.chat-header {
+    padding: 1rem;
+    background-color: $bg-panel;
+    border-bottom: 1px solid $border-color;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    &__info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    &__avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: rgba($accent, 0.15);
+        color: $accent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: $text-primary;
+    }
+
+    &__status {
+        font-size: 0.75rem;
+        color: #3fb950;
+        display: block;
+    }
+}
+
+.chat-close {
+    background: none;
+    border: none;
+    color: $text-muted;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.2s;
+
+    &:hover {
+        color: $text-primary;
+    }
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background-color: lighten($bg-page, 1%);
+}
+
+.chat-message {
+    display: flex;
+    max-width: 85%;
+
+    &__bubble {
+        padding: 0.65rem 0.9rem;
+        border-radius: 0.75rem;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    &--user {
+        align-self: flex-end;
+        .chat-message__bubble {
+            background: linear-gradient(135deg, $accent 0%, darken($accent, 12%) 100%);
+            color: #fff;
+            border-bottom-right-radius: 0.15rem;
+        }
+    }
+
+    &--assistant {
+        align-self: flex-start;
+        .chat-message__bubble {
+            background-color: $bg-panel;
+            color: $text-primary;
+            border: 1px solid $border-color;
+            border-bottom-left-radius: 0.15rem;
+        }
+    }
+}
+
+.chat-suggestions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-top: 1px solid rgba($border-color, 0.5);
+    background-color: $bg-page;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.suggestion-chip {
+    background-color: $bg-panel;
+    border: 1px solid $border-color;
+    color: lighten($text-muted, 15%);
+    font-size: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+
+    &:hover {
+        background-color: rgba($accent, 0.1);
+        border-color: rgba($accent, 0.3);
+        color: $accent;
+    }
+}
+
+.chat-input-area {
+    padding: 0.75rem 1rem;
+    background-color: $bg-panel;
+    border-top: 1px solid $border-color;
+    display: flex;
+    gap: 0.75rem;
+
+    input {
+        flex: 1;
+        background-color: $bg-input;
+        border: 1px solid $border-color;
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.9rem;
+        color: $text-primary;
+        font-size: 0.85rem;
+        outline: none;
+        transition: border-color 0.2s;
+
+        &:focus {
+            border-color: $accent;
+        }
+    }
+
+    button {
+        background-color: $accent;
+        border: none;
+        border-radius: 0.5rem;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+
+        &:hover:not(:disabled) {
+            background-color: darken($accent, 8%);
+        }
+
+        &:disabled {
+            background-color: $border-color;
+            color: $text-muted;
+            cursor: not-allowed;
+        }
+
+        &:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+    }
+}
+
+// ── Dot Loader for AI Typing ──
+.dot-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 12px;
+
+    span {
+        width: 6px;
+        height: 6px;
+        background-color: $text-muted;
+        border-radius: 50%;
+        display: inline-block;
+        animation: bounce 1.4s infinite ease-in-out both;
+
+        &:nth-child(1) { animation-delay: -0.32s; }
+        &:nth-child(2) { animation-delay: -0.16s; }
+        &:nth-child(3) { animation-delay: -0.08s; }
+    }
+}
+
+@keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+}

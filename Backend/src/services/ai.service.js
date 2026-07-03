@@ -218,4 +218,90 @@ Requirements for the HTML resume:
     }
 }
 
-module.exports = { generateInterviewReport, generateResumePdf }
+const ChatResponseSchema = z.object({
+    response: z.string(),
+    updatedPlan: z.object({
+        matchScore: z.number().min(0).max(100).optional(),
+        technicalQuestions: z.array(QuestionSchema).optional(),
+        behavioralQuestions: z.array(QuestionSchema).optional(),
+        skillGaps: z.array(SkillGapSchema).optional(),
+        preparationPlan: z.array(PreparationPlanSchema).optional()
+    }).nullable()
+})
+
+async function handlePlanChat({ resume, selfDescription, jobDescription, currentPlan, message, chatHistory }) {
+    const formattedHistory = chatHistory && chatHistory.length > 0 
+        ? chatHistory.map(ch => `${ch.role === 'user' ? 'Candidate' : 'Coach (You)'}: ${ch.content}`).join('\n')
+        : "None";
+
+    const prompt = `You are PrepIQ, an expert AI career coach. You are discussing a personalized interview preparation plan with a candidate.
+
+Context:
+- Candidate's Resume: ${resume || "Not provided"}
+- Candidate's Self Description: ${selfDescription || "Not provided"}
+- Target Job Description: ${jobDescription}
+
+Current Generated Plan Details (Current State):
+${JSON.stringify(currentPlan, null, 2)}
+
+Chat Message History:
+${formattedHistory}
+
+New Message from Candidate: "${message}"
+
+Your task is to:
+1. Respond to the candidate's query or feedback as a professional, encouraging coach.
+2. If the candidate explicitly requests changes to their preparation plan, technical questions, behavioral questions, match score, or skill gaps (e.g. "Add more JS questions", "Change Day 3 focus to System Design", "Include Kubernetes in skill gaps"), you MUST make those changes and provide the updated plan fields under "updatedPlan" in your JSON response.
+3. If the candidate does NOT request any plan modifications, "updatedPlan" MUST be null. Only populate fields in "updatedPlan" that are being modified or added. Keep unmodified fields out of "updatedPlan" or return them updated.
+
+Return a JSON object with EXACTLY this structure (do not include any markdown formatting, just the raw JSON object):
+{
+  "response": "<your conversational coaching response to the candidate>",
+  "updatedPlan": null | {
+    "matchScore": <number 0-100 or omit>,
+    "technicalQuestions": [
+       { "question": "string", "intention": "string", "answer": "string" }
+    ],
+    "behavioralQuestions": [
+       { "question": "string", "intention": "string", "answer": "string" }
+    ],
+    "skillGaps": [
+       { "skill": "string", "severity": "low" | "medium" | "high" }
+    ],
+    "preparationPlan": [
+       { "day": 1, "focus": "string", "tasks": ["string"] }
+    ]
+  }
+}`;
+
+    try {
+        const response = await groq.chat.completions.create({
+            model: MODEL,
+            messages: [
+                {
+                    role: "system",
+                    content: "You are PrepIQ, a helpful and adaptive interview coach. Always respond with valid JSON only, no markdown, no extra text."
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+        });
+
+        const raw = JSON.parse(response.choices[0].message.content);
+        const validated = ChatResponseSchema.parse(raw);
+        return validated;
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            console.error("Plan chat validation failed:", err.errors);
+            throw new Error("AI returned an invalid chat response structure.");
+        }
+        console.error("handlePlanChat error:", err.message);
+        throw new Error("Failed to process chat message.");
+    }
+}
+
+module.exports = { generateInterviewReport, generateResumePdf, handlePlanChat }

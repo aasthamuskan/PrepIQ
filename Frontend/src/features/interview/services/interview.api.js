@@ -63,3 +63,11 @@ export const generateResumePdf = async ({ interviewReportId }) => {
 
     return response.data
 }
+
+/**
+ * @description Service to chat with AI coach to discuss/modify the plan.
+ */
+export const chatWithCoach = async ({ interviewId, message, chatHistory }) => {
+    const response = await api.post("/api/interview/chat", { interviewId, message, chatHistory })
+    return response.data
+}

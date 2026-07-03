@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import '../style/interview.scss'
 import { useInterview } from '../hooks/useInterview.js'
 import { useNavigate, useParams } from 'react-router'
-
-
 
 const NAV_ITEMS = [
     { id: 'technical', label: 'Technical Questions', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>) },
     { id: 'behavioral', label: 'Behavioral Questions', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>) },
     { id: 'roadmap', label: 'Road Map', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>) },
+]
+
+const SUGGESTIONS = [
+    "Add 3 more technical questions",
+    "Change Day 3 focus to System Design",
+    "Add Docker to my skill gaps",
+    "Explain how to answer Q1"
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -59,8 +64,18 @@ const RoadMapDay = ({ day }) => (
 // ── Main Component ────────────────────────────────────────────────────────────
 const Interview = () => {
     const [ activeNav, setActiveNav ] = useState('technical')
-    const { report, getReportById, loading, getResumePdf } = useInterview()
+    const { report, getReportById, loading, getResumePdf, chatWithAI } = useInterview()
     const { interviewId } = useParams()
+
+    // Chatbot States
+    const [ chatOpen, setChatOpen ] = useState(false)
+    const [ messages, setMessages ] = useState([
+        { role: 'assistant', content: 'Hi there! I am PrepIQ, your personal AI career coach. How can I help you adjust your preparation plan or answer questions about your interview?' }
+    ])
+    const [ inputValue, setInputValue ] = useState('')
+    const [ chatLoading, setChatLoading ] = useState(false)
+
+    const chatEndRef = useRef(null)
 
     useEffect(() => {
         if (interviewId) {
@@ -68,11 +83,42 @@ const Interview = () => {
         }
     }, [ interviewId ])
 
+    useEffect(() => {
+        if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [ messages, chatLoading ])
 
+    const handleSendMessage = async (msgText) => {
+        const textToSend = msgText || inputValue
+        if (!textToSend.trim() || chatLoading) return
+
+        const userMsg = { role: 'user', content: textToSend }
+        setMessages(prev => [ ...prev, userMsg ])
+        setInputValue('')
+        setChatLoading(true)
+
+        try {
+            // Exclude initial prompt from context history sent to AI
+            const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
+            const res = await chatWithAI({
+                interviewId,
+                message: textToSend,
+                chatHistory: [ ...history, userMsg ]
+            })
+
+            setMessages(prev => [ ...prev, { role: 'assistant', content: res.response } ])
+        } catch (err) {
+            setMessages(prev => [ ...prev, { role: 'assistant', content: "I encountered an error while processing your request. Please try again." } ])
+        } finally {
+            setChatLoading(false)
+        }
+    }
 
     if (loading || !report) {
         return (
             <main className='loading-screen'>
+                <div className='loading-spinner' />
                 <h1>Loading your interview plan...</h1>
             </main>
         )
@@ -81,7 +127,6 @@ const Interview = () => {
     const scoreColor =
         report.matchScore >= 80 ? 'score--high' :
             report.matchScore >= 60 ? 'score--mid' : 'score--low'
-
 
     return (
         <div className='interview-page'>
@@ -188,8 +233,73 @@ const Interview = () => {
 
                 </aside>
             </div>
+
+            {/* ── Chat Widget ── */}
+            <div className={`chat-widget ${chatOpen ? 'chat-widget--open' : ''}`}>
+                {!chatOpen ? (
+                    <button className='chat-trigger' onClick={() => setChatOpen(true)}>
+                        <span className='chat-trigger__pulse' />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span>Coach PrepIQ</span>
+                    </button>
+                ) : (
+                    <div className='chat-window'>
+                        <div className='chat-header'>
+                            <div className='chat-header__info'>
+                                <span className='chat-header__avatar'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M12 2v9"/><path d="M8 5h8"/></svg>
+                                </span>
+                                <div>
+                                    <h4 className='chat-header__title'>PrepIQ Coach</h4>
+                                    <span className='chat-header__status'>Online &amp; ready to customize</span>
+                                </div>
+                            </div>
+                            <button className='chat-close' onClick={() => setChatOpen(false)}>✕</button>
+                        </div>
+
+                        <div className='chat-messages'>
+                            {messages.map((m, i) => (
+                                <div key={i} className={`chat-message chat-message--${m.role}`}>
+                                    <div className='chat-message__bubble'>
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className='chat-message chat-message--assistant chat-message--loading'>
+                                    <div className='chat-message__bubble'>
+                                        <span className='dot-loader'><span></span><span></span><span></span></span>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <div className='chat-suggestions'>
+                            {SUGGESTIONS.map((s, i) => (
+                                <button key={i} className='suggestion-chip' onClick={() => handleSendMessage(s)}>
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+
+                        <form className='chat-input-area' onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
+                            <input
+                                type='text'
+                                placeholder='Ask to modify plan, add questions...'
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                disabled={chatLoading}
+                            />
+                            <button type='submit' disabled={chatLoading || !inputValue.trim()}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </button>
+                        </form>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
 
-export default Interview
+export default Interview
