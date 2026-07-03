@@ -3,10 +3,13 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const tokenBlacklistModel = require("../models/blacklist.model")
 
+const IS_PROD = process.env.NODE_ENV === "production"
+
 const COOKIE_OPTIONS = {
     httpOnly: true,
-    sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
+    sameSite: IS_PROD ? "none" : "lax",  // "none" required for cross-origin (Vercel -> Render)
+    secure: IS_PROD,                       // must be true when sameSite="none"
+    maxAge: 24 * 60 * 60 * 1000           // 1 day
 }
 
 /**

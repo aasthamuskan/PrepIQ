@@ -8,12 +8,20 @@ app.use(express.json())
 app.use(cookieParser())
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow any localhost origin (5173, 5174, 5175, etc.)
-        if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
-            callback(null, true)
-        } else {
-            callback(new Error("Not allowed by CORS"))
-        }
+        // Allow requests with no origin (mobile apps, Postman, curl)
+        if (!origin) return callback(null, true)
+
+        // Allow all localhost ports in development
+        if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true)
+
+        // Allow the specific deployed frontend URL (set in env)
+        const allowedOrigin = process.env.ALLOWED_ORIGIN
+        if (allowedOrigin && origin === allowedOrigin) return callback(null, true)
+
+        // Allow any vercel.app domain (for preview deployments too)
+        if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return callback(null, true)
+
+        callback(new Error("Not allowed by CORS"))
     },
     credentials: true
 }))

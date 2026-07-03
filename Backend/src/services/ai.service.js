@@ -126,7 +126,16 @@ Generate at least 5 technical questions, 4 behavioral questions, identify key sk
 
 async function generatePdfFromHtml(htmlContent) {
     const browser = await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",   // needed on Render (limited /dev/shm)
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process"           // required for some cloud environments
+        ],
+        headless: true
     })
     const page = await browser.newPage()
     await page.setContent(htmlContent, { waitUntil: "networkidle0" })
